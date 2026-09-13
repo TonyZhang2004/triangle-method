@@ -433,23 +433,6 @@ standard.
 The application keeps coefficient entry, process isolation, proof search, and
 certificate verification as separate stages joined by exact, versioned data.
 
-### Data flow
-
-```mermaid
-flowchart LR
-    A[Coefficient fields] --> B[Exact client normalization]
-    B --> C[Versioned JSON request]
-    C --> D[Fastify validation and bounded queue]
-    D --> E[Python adapter]
-    E --> F[Direct recognizers]
-    F --> G[Finite component generation]
-    G --> H[Optional HiGHS support proposal]
-    H --> I[Exact rational Phase I solver]
-    I --> J[Independent certificate verifier]
-    J --> K[Validated JSON response]
-    K --> L[React proof, triangle, or witness]
-```
-
 ### Proof algorithm
 
 The backend follows these stages:
