@@ -12,12 +12,7 @@ $$
 $$
 
 $$
-\begin{aligned}
-\sum_{\mathrm{cyc}}\left(x^5-x^4y-x^4z+2x^3yz-x^2y^2z\right)
-&= \frac{x^2+y^2+z^2}{2}
-   \sum_{\mathrm{cyc}}x(x-y)(x-z) \\
-&\quad + \frac{1}{2}\sum_{\mathrm{cyc}}x^3(x-y)(x-z) \ge 0.
-\end{aligned}
+\sum_{\mathrm{cyc}}\left(x^5-x^4y-x^4z+2x^3yz-x^2y^2z\right)=\frac{x^2+y^2+z^2}{2}\sum_{\mathrm{cyc}}x(x-y)(x-z)+\frac{1}{2}\sum_{\mathrm{cyc}}x^3(x-y)(x-z)\ge 0.
 $$
 
 Triangle Method is a local exact prover for homogeneous polynomial inequalities in
