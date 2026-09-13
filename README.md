@@ -1,6 +1,6 @@
 # Triangle Method
 
-\[
+$$
 \begin{array}{rrrrrrrrrrr}
 &&&&& 1 &&&&& \\
 &&&& -1 && -1 &&&& \\
@@ -9,15 +9,20 @@
 & -1 && 2 && -1 && 2 && -1 & \\
 1 && -1 && 0 && 0 && -1 && 1
 \end{array}
-\]
+$$
 
-\[
-\small \sum_{\mathrm{cyc}}\left(x^5-x^4y-x^4z+2x^3yz-x^2y^2z\right)=\frac{x^2+y^2+z^2}{2}\sum_{\mathrm{cyc}}x(x-y)(x-z)+\frac12\sum_{\mathrm{cyc}}x^3(x-y)(x-z)\ge 0.
-\]
+$$
+\begin{aligned}
+\sum_{\mathrm{cyc}}\left(x^5-x^4y-x^4z+2x^3yz-x^2y^2z\right)
+&= \frac{x^2+y^2+z^2}{2}
+   \sum_{\mathrm{cyc}}x(x-y)(x-z) \\
+&\quad + \frac{1}{2}\sum_{\mathrm{cyc}}x^3(x-y)(x-z) \ge 0.
+\end{aligned}
+$$
 
 Triangle Method is a local exact prover for homogeneous polynomial inequalities in
-three nonnegative real variables. It treats the coefficients of a degree-
-\(n\) polynomial as points in an equilateral triangular arrangement, then tries
+three nonnegative real variables. It treats the coefficients of a polynomial of
+degree $n$ as points in an equilateral triangular arrangement, then tries
 to reconstruct the polynomial as a nonnegative rational combination of smaller
 known inequalities and squares.
 
@@ -84,12 +89,12 @@ search.
 
 ## Entering an inequality
 
-Choose a degree from 2 through 12. A degree-\(n\) homogeneous ternary polynomial
-has
+Choose a degree from 2 through 12. A homogeneous ternary polynomial of degree
+$n$ has
 
-\[
+$$
 \frac{(n+1)(n+2)}{2}
-\]
+$$
 
 coefficient positions. The editor labels every position with its monomial, so
 the user only enters coefficients.
@@ -152,17 +157,17 @@ rows from top to bottom and left to right:
 
 This represents
 
-\[
+$$
 x^2+y^2+z^2-xy-xz-yz \ge 0.
-\]
+$$
 
 Press **Prove**. The expected result is `PROVED`, with one Cauchy group and the
 exact squares-completed certificate
 
-\[
+$$
 x^2+y^2+z^2-xy-xz-yz
 =\frac12(x-y)^2+\frac12(x-z)^2+\frac12(y-z)^2 \ge 0.
-\]
+$$
 
 The three component controls use the Cauchy group color. Select a component,
 then switch among **Target**, **Component**, **Accumulated**, and **Remainder**
@@ -204,9 +209,9 @@ integer from 2 through 12. Unlike the UI, the transport uses canonical strings:
 no blanks, whitespace, leading `+`, leading zeros, decimals, or `-0`.
 
 The following copyable example sends the lifted Cauchy inequality
-\(x^{10}(x^2+y^2+z^2-xy-xz-yz)\) as a degree-12 request. Change `DEGREE` to any
+$x^{10}(x^2+y^2+z^2-xy-xz-yz)$ as a degree-12 request. Change `DEGREE` to any
 value from 2 through 12 to send the corresponding
-\(x^{\mathrm{DEGREE}-2}\) lift.
+$x^{\mathrm{DEGREE}-2}$ lift.
 
 Run it from the repository root while the development server is active:
 
