@@ -1,7 +1,13 @@
-import type { CSSProperties } from "react";
+import { useLayoutEffect, useRef, type CSSProperties } from "react";
 
 import { formatRational, isZeroRational } from "../exact";
-import { coordinateText, EQUILATERAL_ALTITUDE, trianglePoints } from "../geometry";
+import {
+  coordinateText,
+  EQUILATERAL_ALTITUDE,
+  fittedTriangleStep,
+  trianglePoints,
+} from "../geometry";
+import { useResponsiveSpace, type ResponsiveSpace } from "../responsive";
 import type { RationalRecord } from "../types";
 
 type CoefficientTriangleProps = {
@@ -13,11 +19,37 @@ type CoefficientTriangleProps = {
 const OUTPUT_SIDE_PADDING = 34;
 const OUTPUT_VERTICAL_PADDING = 28;
 
-function outputStep(rows: RationalRecord[][]): number {
+/** Return the smallest output spacing that keeps the longest rational readable. */
+function minimumOutputStep(rows: RationalRecord[][]): number {
   const longest = Math.max(
     ...rows.flatMap((row) => row.map((value) => formatRational(value).length)),
   );
   return Math.max(76, longest * 11 + 34);
+}
+
+/** Expand an output triangle into the available device space without crowding values. */
+function outputStep(
+  rows: RationalRecord[][],
+  space: ResponsiveSpace,
+): number {
+  const minimumStep = minimumOutputStep(rows);
+  if (space.containerWidth <= 0 || space.viewportHeight <= 0) {
+    return minimumStep;
+  }
+  const degree = rows.length - 1;
+  const availableHeight = Math.min(
+    960,
+    Math.max(320, space.viewportHeight * 0.75),
+  );
+  return fittedTriangleStep({
+    degree,
+    availableWidth: space.containerWidth,
+    availableHeight,
+    horizontalPadding: 2 * OUTPUT_SIDE_PADDING,
+    verticalPadding: 2 * OUTPUT_VERTICAL_PADDING + 18,
+    minimumStep,
+    maximumStep: 220,
+  });
 }
 
 function spokenRational(value: RationalRecord): string {
@@ -45,24 +77,42 @@ export function CoefficientTriangle({
   label,
   toneClass = "",
 }: CoefficientTriangleProps) {
+  const scrollContainer = useRef<HTMLDivElement>(null);
+  const responsiveSpace = useResponsiveSpace(scrollContainer);
   const degree = rows.length - 1;
-  const step = outputStep(rows);
+  const step = outputStep(rows, responsiveSpace);
   const points = trianglePoints(degree, step);
   const width = degree * step + 2 * OUTPUT_SIDE_PADDING;
   const height =
     degree * step * EQUILATERAL_ALTITUDE + 2 * OUTPUT_VERTICAL_PADDING + 18;
   const description = triangleDescription(label, rows);
 
+  useLayoutEffect(() => {
+    const element = scrollContainer.current;
+    if (!element) return;
+    element.scrollLeft = Math.max(
+      0,
+      (element.scrollWidth - element.clientWidth) / 2,
+    );
+  }, [degree, responsiveSpace.containerWidth, step]);
+
   return (
     <figure className={`output-triangle-figure ${toneClass}`.trim()}>
       <figcaption className="triangle-caption">{label}</figcaption>
-      <div className="triangle-scroll">
+      <div
+        className="triangle-scroll output-triangle-scroll"
+        ref={scrollContainer}
+        role="region"
+        aria-label={`${label} scrollable coefficient triangle`}
+        tabIndex={0}
+      >
         <div
           className="triangle-canvas output-triangle"
           role="img"
           aria-label={description}
           style={{ width, height }}
           data-degree={degree}
+          data-lattice-step={coordinateText(step)}
         >
           {points.map((point) => {
             const key = `${point.row}:${point.column}`;

@@ -27,10 +27,28 @@ describe("proof request contract", () => {
     expect(parsed.coefficientRows).not.toBe(source.coefficientRows);
   });
 
+  it("accepts all 91 exact coefficients in a degree-12 request", () => {
+    const source = proofRequest(12);
+    source.coefficientRows[12][12] = "-123456789/100000000";
+
+    const parsed = parseProofRequest(source);
+
+    expect(parsed.degree).toBe(12);
+    expect(parsed.coefficientRows.map((row) => row.length)).toEqual(
+      Array.from({ length: 13 }, (_, row) => row + 1),
+    );
+    expect(parsed.coefficientRows.flat()).toHaveLength(91);
+    expect(parsed.coefficientRows[12][12]).toBe("-123456789/100000000");
+    expect(parsed.coefficientRows[12]).not.toBe(source.coefficientRows[12]);
+  });
+
   it.each([
     ["wrong schema", { ...proofRequest(), schema: "wrong" }],
     ["extra field", { ...proofRequest(), unexpected: true }],
-    ["unsupported degree", { ...proofRequest(), degree: 6 }],
+    [
+      "degree above the API limit",
+      { ...proofRequest(12), degree: 13 },
+    ],
     [
       "wrong number of rows",
       { ...proofRequest(), coefficientRows: [["0"], ["0", "0"]] },
@@ -79,6 +97,36 @@ describe("proof response contract", () => {
     expect(parseProofResponse(provedResponse()).outcome).toBe("PROVED");
     expect(parseProofResponse(unknownResponse()).outcome).toBe("UNKNOWN");
     expect(parseProofResponse(disproved).outcome).toBe("DISPROVED");
+  });
+
+  it("accepts exact triangular data in a degree-12 response", () => {
+    const response = unknownResponse(12);
+    response.target.coefficientRows[12][12] = rational("-5", "7");
+    response.target.latex = "-\\frac{5}{7}z^{12} \\ge 0";
+
+    const parsed = parseProofResponse(response);
+
+    expect(parsed.target.degree).toBe(12);
+    expect(parsed.target.coefficientRows.map((row) => row.length)).toEqual(
+      Array.from({ length: 13 }, (_, row) => row + 1),
+    );
+    expect(parsed.target.coefficientRows.flat()).toHaveLength(91);
+    expect(parsed.target.coefficientRows[12][12]).toEqual(rational("-5", "7"));
+    expect(parsed.target.coefficientRows[12]).not.toBe(
+      response.target.coefficientRows[12],
+    );
+  });
+
+  it("rejects a degree-13 response", () => {
+    const response = {
+      ...unknownResponse(12),
+      target: {
+        ...unknownResponse(12).target,
+        degree: 13,
+      },
+    };
+
+    expect(() => parseProofResponse(response)).toThrow(ContractValidationError);
   });
 
   it("validates term, step, group, and triangular contribution references", () => {

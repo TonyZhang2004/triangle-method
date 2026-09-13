@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type Ref } from "react";
 
 import { termColorClasses } from "../colors";
 import type {
@@ -15,6 +15,7 @@ type TriangleMode = "target" | "component" | "accumulated" | "remainder";
 
 type ProofResultViewProps = {
   result: ProofResponse;
+  headingRef?: Ref<HTMLHeadingElement>;
 };
 
 function inequalityLatex(targetLatex: string): string {
@@ -267,11 +268,11 @@ function Diagnostics({ result }: { result: ProofResponse }) {
 }
 
 /** Render proved, disproved, and inconclusive outcomes with their exact evidence. */
-export function ProofResultView({ result }: ProofResultViewProps) {
+export function ProofResultView({ result, headingRef }: ProofResultViewProps) {
   return (
     <section className="result-panel" aria-labelledby="result-status">
       <div className={`result-status result-status-${result.outcome.toLowerCase()}`}>
-        <h2 id="result-status">
+        <h2 id="result-status" ref={headingRef} tabIndex={-1}>
           {result.outcome === "PROVED"
             ? "Proved"
             : result.outcome === "DISPROVED"

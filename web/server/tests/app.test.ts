@@ -55,10 +55,45 @@ describe("proof API", () => {
     expect(executor).toHaveBeenCalledOnce();
   });
 
+  it("accepts a degree-12 triangle at the HTTP boundary", async () => {
+    const executor = vi.fn(async () => unknownResponse(12));
+    const server = track(createProofServer({ executor }));
+
+    const response = await server.inject({
+      method: "POST",
+      url: "/api/prove",
+      payload: proofRequest(12),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().target.degree).toBe(12);
+    expect(executor).toHaveBeenCalledOnce();
+  });
+
+  it("accepts the largest valid degree-12 request within the body limit", async () => {
+    const executor = vi.fn(async () => unknownResponse(12));
+    const server = track(createProofServer({ executor }));
+    const request = proofRequest(12);
+    const coefficient = `-${"9".repeat(64)}/${"8".repeat(63)}7`;
+    request.coefficientRows = request.coefficientRows.map((row) =>
+      row.map(() => coefficient),
+    );
+
+    const response = await server.inject({
+      method: "POST",
+      url: "/api/prove",
+      payload: request,
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(executor).toHaveBeenCalledOnce();
+  });
+
   it.each([
     ["extra request field", { ...proofRequest(), extra: true }],
     ["string degree", { ...proofRequest(), degree: "2" }],
     ["string schema version", { ...proofRequest(), schemaVersion: "1" }],
+    ["degree above the API limit", { ...proofRequest(12), degree: 13 }],
     [
       "dependent row width",
       {

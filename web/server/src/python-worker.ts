@@ -20,7 +20,10 @@ import type { ProofExecutor } from "./worker-queue.js";
 import { locateProjectRoot } from "./paths.js";
 
 const DEFAULT_TIMEOUT_MILLISECONDS = 12_000;
-const DEFAULT_STDOUT_LIMIT_BYTES = 1024 * 1024;
+// A degree-12 certificate can contain 91 full contribution triangles and 91
+// accumulated/remainder steps. Keep the subprocess bounded while allowing dense
+// supported responses with long exact rational coefficients.
+const DEFAULT_STDOUT_LIMIT_BYTES = 8 * 1024 * 1024;
 const DEFAULT_STDERR_LIMIT_BYTES = 64 * 1024;
 
 export interface WorkerCommand {

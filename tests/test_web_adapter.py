@@ -16,6 +16,7 @@ from triangle_method import (
     ProofDiagnostic,
     ProofResult,
     ProofStatus,
+    SolverBackend,
     SquareComponent,
     WeightedComponent,
 )
@@ -168,6 +169,43 @@ def test_zero_input_preserves_the_selected_display_degree() -> None:
         "steps": [],
         "groups": [],
     }
+
+
+def test_degree_twelve_candidate_combination_returns_an_exact_certificate() -> None:
+    """Prove a degree-twelve monomial lift through the configured candidate search."""
+    rows = [
+        ["1"],
+        ["-1", "-1"],
+        ["1", "-1", "1"],
+        *[["0"] * (row_index + 1) for row_index in range(3, 13)],
+    ]
+
+    response = handle_request(_request(rows))
+
+    assert response["outcome"] == "PROVED"
+    assert response["method"] == "candidate_combination"
+    assert response["target"]["degree"] == 12
+    assert [len(row) for row in response["target"]["coefficientRows"]] == list(
+        range(1, 14)
+    )
+    proof = response["proof"]
+    assert isinstance(proof, dict)
+    assert proof["verified"] is True
+    assert proof["residualZero"] is True
+    assert len(proof["terms"]) == 3
+    assert proof["groups"] == [
+        {
+            "id": "group-1",
+            "label": "Cauchy",
+            "semanticKind": "cauchy",
+            "termIds": ["component-1", "component-2", "component-3"],
+        }
+    ]
+    assert all(
+        value == 0
+        for row in _rows(proof["steps"][-1]["remainderRows"])
+        for value in row
+    )
 
 
 def test_disproved_response_contains_only_an_exact_negative_witness() -> None:
@@ -327,7 +365,8 @@ def test_unknown_response_excludes_proof_and_counterexample_evidence(
     """Map a backend UNKNOWN result without manufacturing certificate or witness data."""
     import triangle_method.web_adapter as adapter
 
-    def return_unknown(target):
+    def return_unknown(target, *, options):
+        assert options.combination_limits.backend is SolverBackend.AUTO
         return ProofResult(
             target=target,
             status=ProofStatus.UNKNOWN,
@@ -471,7 +510,7 @@ def test_mismatched_display_expression_fails_before_identity_emission(
             "request.unsupported_version",
         ),
         (lambda request: request.update(degree=1), "request.invalid_degree"),
-        (lambda request: request.update(degree=6), "request.invalid_degree"),
+        (lambda request: request.update(degree=13), "request.invalid_degree"),
         (lambda request: request.update(degree=2.5), "request.invalid_degree"),
         (
             lambda request: request.update(coefficientRows=[["1"]]),

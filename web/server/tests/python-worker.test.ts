@@ -126,6 +126,64 @@ describe("Python proof worker", () => {
     expect(response.proof?.terms).toHaveLength(3);
   });
 
+  it(
+    "proves a degree-12 lifted Cauchy inequality through the production worker",
+    async () => {
+      const request = proofRequest(12);
+      request.coefficientRows[0] = ["1"];
+      request.coefficientRows[1] = ["-1", "-1"];
+      request.coefficientRows[2] = ["1", "-1", "1"];
+
+      const response = await createPythonProofExecutor({ projectRoot })(
+        request,
+        new AbortController().signal,
+      );
+
+      expect(response.outcome).toBe("PROVED");
+      expect(response.method).toBe("candidate_combination");
+      expect(response.target.degree).toBe(12);
+      expect(response.target.coefficientRows.flat()).toHaveLength(91);
+      expect(response.proof?.terms).toHaveLength(3);
+      expect(response.proof?.groups).toEqual([
+        {
+          id: "group-1",
+          label: "Cauchy",
+          semanticKind: "cauchy",
+          termIds: ["component-1", "component-2", "component-3"],
+        },
+      ]);
+      expect(
+        response.proof?.steps.at(-1)?.remainderRows
+          .flat()
+          .every((coefficient) => coefficient.numerator === "0"),
+      ).toBe(true);
+    },
+    15_000,
+  );
+
+  it(
+    "transports a dense degree-12 certificate with long exact coefficients",
+    async () => {
+      const request = proofRequest(12);
+      const coefficient = `${"9".repeat(64)}/${"8".repeat(63)}7`;
+      request.coefficientRows = request.coefficientRows.map((row) =>
+        row.map(() => coefficient),
+      );
+
+      const response = await createPythonProofExecutor({ projectRoot })(
+        request,
+        new AbortController().signal,
+      );
+
+      expect(response.outcome).toBe("PROVED");
+      expect(response.target.degree).toBe(12);
+      expect(response.target.coefficientRows.flat()).toHaveLength(91);
+      expect(response.proof?.verified).toBe(true);
+      expect(response.proof?.terms).toHaveLength(91);
+    },
+    15_000,
+  );
+
   it.each([
     {
       outcome: "DISPROVED",

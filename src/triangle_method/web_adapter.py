@@ -18,8 +18,9 @@ from .certificate import DecompositionCertificate, WeightedComponent
 from .errors import PolynomialInputError
 from .polynomial import HomogeneousPolynomial, Variables
 from .primitives import MonomialComponent, SchurComponent, SquareComponent
-from .proof import prove
+from .proof import ProofSearchOptions, prove
 from .results import ProofResult, ProofStatus
+from .search import CombinationSearchLimits, SolverBackend
 from .triangle import coefficient_rows, from_coefficient_rows
 from .verify import verify_certificate
 
@@ -27,12 +28,15 @@ REQUEST_SCHEMA = "triangle_method.proof_request"
 RESPONSE_SCHEMA = "triangle_method.proof_response"
 WEB_SCHEMA_VERSION = 1
 MINIMUM_DEGREE = 2
-MAXIMUM_DEGREE = 5
+MAXIMUM_DEGREE = 12
 
 _REQUEST_FIELDS = {"schema", "schemaVersion", "degree", "coefficientRows"}
 _COEFFICIENT_PATTERN = re.compile(r"-?(?:0|[1-9][0-9]{0,63})(?:/[1-9][0-9]{0,63})?\Z")
 _SEMANTIC_KINDS = frozenset({"cauchy", "am_gm", "square", "schur", "monomial"})
 _VARIABLES = sp.symbols("x y z")
+_WEB_PROOF_OPTIONS = ProofSearchOptions(
+    combination_limits=CombinationSearchLimits(backend=SolverBackend.AUTO)
+)
 
 JsonObject = dict[str, object]
 ExactRows = tuple[tuple[sp.Rational, ...], ...]
@@ -625,7 +629,7 @@ def handle_request(payload: object) -> JsonObject:
             request.coefficient_rows,
             variables=_VARIABLES,
         )
-        result = prove(target)
+        result = prove(target, options=_WEB_PROOF_OPTIONS)
     except PolynomialInputError as error:
         raise WebAdapterInputError(
             "request.invalid_polynomial",

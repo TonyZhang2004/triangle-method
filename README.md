@@ -1,130 +1,337 @@
 # Triangle Method
 
-Triangle Method is a Python package for working with exact coefficient triangles
-of ternary homogeneous polynomials. It provides the mathematical data model,
-coefficient-row conversion, reversible content normalization, and static SVG/HTML
-rendering. It also supports manually authored certificates, direct exact recognition,
-automatic fitting over a finite library of nonnegative components, and bounded exact
-rational counterexample search. Every successful proof and counterexample is checked
-again with exact arithmetic before it becomes a mathematical result.
+\[
+\begin{array}{rrrrrrrrrrr}
+&&&&& 1 &&&&& \\
+&&&& -1 && -1 &&&& \\
+&&& 0 && 2 && 0 &&& \\
+&& 0 && -1 && -1 && 0 && \\
+& -1 && 2 && -1 && 2 && -1 & \\
+1 && -1 && 0 && 0 && -1 && 1
+\end{array}
+\]
 
-## Exact polynomial model
+\[
+\small \sum_{\mathrm{cyc}}\left(x^5-x^4y-x^4z+2x^3yz-x^2y^2z\right)=\frac{x^2+y^2+z^2}{2}\sum_{\mathrm{cyc}}x(x-y)(x-z)+\frac12\sum_{\mathrm{cyc}}x^3(x-y)(x-z)\ge 0.
+\]
 
-The package accepts a SymPy expression or `Poly`, an exact scalar constant, or
-an exponent-to-coefficient mapping. Every input uses three explicitly ordered,
-distinct commutative SymPy symbols. Variables may be absent from the polynomial,
-but their order is never inferred.
+Triangle Method is a local exact prover for homogeneous polynomial inequalities in
+three nonnegative real variables. It treats the coefficients of a degree-
+\(n\) polynomial as points in an equilateral triangular arrangement, then tries
+to reconstruct the polynomial as a nonnegative rational combination of smaller
+known inequalities and squares.
 
-Coefficients must be exact integers or rational numbers. Use `sympy.Rational`
-or `fractions.Fraction` for fractions; floating coefficients are rejected so
-that an approximate value cannot silently change the polynomial being studied.
+The repository contains two interfaces to the same proof engine:
+
+- a focused React application for entering coefficient triangles of degrees 2
+  through 12; and
+- a Python package for exact polynomial models, proof search, certificate
+  construction and verification, counterexample search, and coefficient-only
+  SVG/HTML exports.
+
+A successful result is mathematical evidence rather than a numerical guess. The
+backend rebuilds every component and checks the final polynomial identity with
+exact rational arithmetic before reporting a proof.
+
+## Quick start
+
+The local web application currently targets macOS or Linux and expects:
+
+- Python 3.10 or newer;
+- Node.js `^20.19.0` or `>=22.12.0`; and
+- npm.
+
+The Node gateway deliberately looks for the Python interpreter at
+`.venv/bin/python`, so create the environment with that exact name at the
+repository root.
+
+From the repository root, install both halves of the application:
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install --upgrade pip
+.venv/bin/python -m pip install -e '.[dev,search]'
+
+cd web
+npm ci
+```
+
+Start the React development server and Node API together:
+
+```bash
+npm run dev
+```
+
+Open <http://127.0.0.1:5173>. Vite serves the React application there and
+proxies `/api` requests to the Node gateway at <http://127.0.0.1:3000>.
+Press `Ctrl-C` in the terminal to stop both processes.
+
+To build and run the production version locally, use these commands from the
+`web` directory:
+
+```bash
+npm run build
+npm start
+```
+
+Then open <http://127.0.0.1:3000>. The production Node process serves both the
+compiled client and the API.
+
+SciPy is installed by the `search` extra above. The web prover uses it through
+HiGHS to propose a small candidate support when possible. SciPy remains
+optional for the Python package: without it, the solver falls back to its exact
+search.
+
+## Entering an inequality
+
+Choose a degree from 2 through 12. A degree-\(n\) homogeneous ternary polynomial
+has
+
+\[
+\frac{(n+1)(n+2)}{2}
+\]
+
+coefficient positions. The editor labels every position with its monomial, so
+the user only enters coefficients.
+
+The ordering is canonical. Number rows from `r = 0` at the top and positions
+within each row from `j = 0` on the left. Row `r` contains `r + 1` entries, and
+position `(r, j)` stores the coefficient with exponent triple
+
+```text
+(n - r, r - j, j)
+```
+
+for the ordered variables `(x, y, z)`. Thus the top points in the `x` direction,
+the left edge moves toward `y`, the right edge moves toward `z`, and the base
+runs from the pure `y` term to the pure `z` term. The result view displays only
+coefficients in this same orientation; it does not draw a grid or repeat the
+monomial labels.
+
+Coefficient entry is exact:
+
+- an integer such as `4` or `-7` is accepted;
+- a fraction such as `3/5` or `-11/6` is accepted and reduced exactly;
+- a blank field means `0`;
+- the denominator must be a positive integer; and
+- decimals and scientific notation such as `0.5` and `1e-3` are rejected.
+
+The UI accepts a leading `+`, trims surrounding whitespace, and normalizes a
+Unicode minus sign. Each numerator and denominator part may contain at most 64
+digits. The preview updates before submission, and editing any coefficient or
+changing the degree clears an older result so that a certificate is never shown
+for stale input.
+
+The editor measures the available device width and visible height, then derives
+both axes from one responsive lattice step. The triangle therefore remains
+exactly equilateral as a window resizes or a phone changes orientation. When a
+readable triangle cannot fit, its workspace scrolls internally and centers the
+focused coefficient instead of causing page-level horizontal overflow.
+
+The input screen itself stays fixed to the visible viewport. Scroll inside the
+triangle to reach hidden rows; the inequality preview and **Prove** button remain
+in place at the bottom. A valid submission opens the dedicated `#proof` page
+immediately while the backend searches. The certificate, counterexample, or
+inconclusive result then appears on that page. **Back to inequality** and the
+browser Back button return to the preserved coefficient draft.
+
+Degrees 6 through 12 also show an entered-value counter and **Jump to row**.
+Use it to focus and center the first field in a selected row. To fill a whole
+row, paste its coefficients into that first field with spaces, commas, or tabs
+between values; the number of pasted values must match the row length. Blank
+fields in all other positions continue to mean zero.
+
+## Copyable UI demo
+
+Use the quadratic Cauchy example. Select degree `2`, then enter these coefficient
+rows from top to bottom and left to right:
+
+```json
+[["1"], ["-1", "-1"], ["1", "-1", "1"]]
+```
+
+This represents
+
+\[
+x^2+y^2+z^2-xy-xz-yz \ge 0.
+\]
+
+Press **Prove**. The expected result is `PROVED`, with one Cauchy group and the
+exact squares-completed certificate
+
+\[
+x^2+y^2+z^2-xy-xz-yz
+=\frac12(x-y)^2+\frac12(x-z)^2+\frac12(y-z)^2 \ge 0.
+\]
+
+The three component controls use the Cauchy group color. Select a component,
+then switch among **Target**, **Component**, **Accumulated**, and **Remainder**
+to follow the coefficient identity one exact step at a time. The last remainder
+contains only zeros.
+
+## Result meanings
+
+The prover returns exactly one of three outcomes:
+
+- **`PROVED`** includes an exact nonnegative decomposition, its component
+  groups, every accumulated sum and remainder, and confirmation that the
+  independently reconstructed residual is zero.
+- **`DISPROVED`** includes an exact rational point with nonnegative coordinates
+  where the submitted polynomial evaluates to a strictly negative rational
+  number.
+- **`UNKNOWN`** means the bounded candidate and counterexample searches did not
+  settle the inequality. It does not mean the inequality is false, and it is
+  not a proof of nonnegativity.
+
+Presentation labels describe shapes the adapter recognizes exactly. A Cauchy
+group is a complete three-edge family of matching difference squares. An AM-GM
+group is currently an exact opposite-sign binomial square. The underlying proof
+primitives are monomials, monomial multiples of squares, and Schur components;
+the labels do not invoke an unverified external theorem engine.
+
+## HTTP API: degrees 2 through 12
+
+While `npm run dev` is running, the Node API is available on port 3000. Check it
+with:
+
+```bash
+curl --fail-with-body http://127.0.0.1:3000/api/health
+```
+
+`POST /api/prove` accepts a versioned JSON document. Every row must be present,
+row `r` must contain exactly `r + 1` coefficient strings, and `degree` must be an
+integer from 2 through 12. Unlike the UI, the transport uses canonical strings:
+no blanks, whitespace, leading `+`, leading zeros, decimals, or `-0`.
+
+The following copyable example sends the lifted Cauchy inequality
+\(x^{10}(x^2+y^2+z^2-xy-xz-yz)\) as a degree-12 request. Change `DEGREE` to any
+value from 2 through 12 to send the corresponding
+\(x^{\mathrm{DEGREE}-2}\) lift.
+
+Run it from the repository root while the development server is active:
+
+```bash
+mkdir -p .tmp
+
+DEGREE=12 .venv/bin/python - <<'PY' > .tmp/proof-request.json
+import json
+import os
+
+degree = int(os.environ["DEGREE"])
+rows = [["1"], ["-1", "-1"], ["1", "-1", "1"]]
+rows.extend([["0"] * (row + 1) for row in range(3, degree + 1)])
+print(
+    json.dumps(
+        {
+            "schema": "triangle_method.proof_request",
+            "schemaVersion": 1,
+            "degree": degree,
+            "coefficientRows": rows,
+        }
+    )
+)
+PY
+
+curl --fail-with-body --silent --show-error \
+  -H 'content-type: application/json' \
+  --data-binary @.tmp/proof-request.json \
+  http://127.0.0.1:3000/api/prove \
+  > .tmp/proof-response.json
+
+.venv/bin/python - <<'PY'
+import json
+
+with open(".tmp/proof-response.json", encoding="utf-8") as stream:
+    response = json.load(stream)
+proof = response["proof"]
+print(
+    json.dumps(
+        {
+            "outcome": response["outcome"],
+            "method": response["method"],
+            "degree": response["target"]["degree"],
+            "terms": len(proof["terms"]) if proof else 0,
+            "residualZero": proof["residualZero"] if proof else None,
+        },
+        indent=2,
+    )
+)
+PY
+```
+
+The expected summary is:
+
+```json
+{
+  "outcome": "PROVED",
+  "method": "candidate_combination",
+  "degree": 12,
+  "terms": 3,
+  "residualZero": true
+}
+```
+
+Exact coefficients in a response are objects with decimal-string `numerator`
+and `denominator` fields. A response has this top-level shape:
+
+```text
+schema, schemaVersion, outcome, method, target, proof, counterexample, diagnostics
+```
+
+Only a `PROVED` response has `proof`; only a `DISPROVED` response has
+`counterexample`. The complete response deliberately includes full coefficient
+rows for the target, each component contribution, each accumulated sum, and
+each remainder.
+
+## Python package
+
+### Exact polynomial model and automatic proof
+
+The Python API accepts a SymPy expression or `Poly`, an exact scalar, or an
+exponent-to-coefficient mapping. Variables are always supplied explicitly and
+remain ordered. Floating coefficients are rejected; use `sympy.Rational` or
+`fractions.Fraction`.
 
 ```python
 import sympy as sp
 
 from triangle_method import (
     HomogeneousPolynomial,
+    ProofStatus,
     coefficient_rows,
     from_coefficient_rows,
+    prove,
 )
 
 x, y, z = sp.symbols("x y z")
-expression = x**2 + y**2 + z**2 - x * y - y * z - z * x
-
+expression = x**2 + y**2 + z**2 - x * y - x * z - y * z
 polynomial = HomogeneousPolynomial.from_expr(
     expression,
     variables=(x, y, z),
 )
+
 rows = coefficient_rows(polynomial)
-
 assert rows == ((1,), (-1, -1), (1, -1, 1))
+assert from_coefficient_rows(rows, variables=(x, y, z)) == polynomial
 
-reconstructed = from_coefficient_rows(rows, variables=(x, y, z))
-assert reconstructed == polynomial
-assert sp.expand(reconstructed.to_sympy() - expression) == 0
+result = prove(polynomial)
+assert result.status is ProofStatus.PROVED
+assert result.certificate is not None
+assert result.verification is not None
+assert result.verification.valid
+assert result.verification.residual is not None
+assert result.verification.residual.is_zero
 ```
 
-For a degree `n` polynomial, row `r`, column `j` stores the coefficient
+The zero polynomial has canonical degree zero inside the model. Pass
+`display_degree` to `coefficient_rows` or `coefficient_triangle` when an all-zero
+triangle should retain a larger display degree.
 
-```text
-(n - r, r - j, j) -> coefficient of x**(n-r) * y**(r-j) * z**j.
-```
+### Manual certificates
 
-Missing terms appear as exact zeros in the rows. The zero polynomial has
-canonical degree zero; pass `display_degree` to `coefficient_rows` when an
-all-zero triangle of a larger degree is needed.
-
-## Static coefficient triangles
-
-Create one immutable figure from the exact polynomial model. The same figure can
-be displayed in a notebook or serialized as SVG and HTML:
-
-```python
-from triangle_method import coefficient_triangle
-
-triangle = coefficient_triangle(polynomial)
-
-assert triangle.degree == 2
-assert triangle.rows == ((1,), (-1, -1), (1, -1, 1))
-
-svg = triangle.to_svg()
-html = triangle.to_html()
-```
-
-In Jupyter, leave `triangle` as the final expression in a cell to display its
-notebook HTML representation. `to_html()` returns the same inline fragment,
-whereas `save_html()` wraps it in a complete standalone HTML document. The
-drawing contains coefficients only, including every zero. Integers and rational
-numbers remain exact; no monomial labels, grid lines, cells, or triangle outline
-are drawn.
-
-The first ordered variable is the top vertex. The second and third ordered
-variables determine the left and right base directions. This is the same
-orientation used by `coefficient_rows`.
-
-Exports require an explicit path and return the `Path` written. Parent
-directories are not created automatically, and existing files are preserved
-unless `overwrite=True` is requested:
-
-```python
-from pathlib import Path
-
-output_directory = Path(".tmp/readme-example")
-output_directory.mkdir(parents=True, exist_ok=True)
-
-triangle.save_svg(output_directory / "quadratic.svg", overwrite=True)
-triangle.save_html(output_directory / "quadratic.html", overwrite=True)
-```
-
-To draw an all-zero triangle at a chosen degree, pass that degree when creating
-the figure:
-
-```python
-zero = HomogeneousPolynomial.from_expr(0, variables=(x, y, z))
-zero_triangle = coefficient_triangle(zero, display_degree=5)
-
-assert zero_triangle.degree == 5
-assert len(zero_triangle.rows) == 6
-```
-
-Rendering uses only the Python standard library beyond the package's existing
-SymPy dependency. It does not require IPython, a browser package, or a numerical
-solver.
-
-## Manual exact certificates
-
-A certificate expresses one target as an exact nonnegative rational combination
-of built-in components. Batch 3 supports coefficient-one monomials, monomial
-multiples of homogeneous polynomial squares, and Schur components with
-equal-degree monomial substitutions. These primitives are nonnegative on the
-nonnegative orthant of the certificate's three ordered variables.
-
-For example, the quadratic coefficient triangle has the certificate
-
-\[
-x^2+y^2+z^2-xy-yz-zx
-=\tfrac12(x-y)^2+\tfrac12(y-z)^2+\tfrac12(z-x)^2.
-\]
+A certificate is a nonnegative rational weighted sum of supported primitives.
+This example authors the same identity directly and round-trips its versioned
+JSON representation:
 
 ```python
 from triangle_method import (
@@ -134,10 +341,10 @@ from triangle_method import (
     verify_certificate,
 )
 
-linear_factors = (
+factors = (
     HomogeneousPolynomial.from_expr(x - y, variables=(x, y, z)),
+    HomogeneousPolynomial.from_expr(x - z, variables=(x, y, z)),
     HomogeneousPolynomial.from_expr(y - z, variables=(x, y, z)),
-    HomogeneousPolynomial.from_expr(z - x, variables=(x, y, z)),
 )
 certificate = DecompositionCertificate(
     target=polynomial,
@@ -146,82 +353,49 @@ certificate = DecompositionCertificate(
             weight=sp.Rational(1, 2),
             component=SquareComponent(factor=factor),
         )
-        for factor in linear_factors
+        for factor in factors
     ),
 )
 
 report = verify_certificate(certificate)
 assert report.valid
 assert report.residual is not None and report.residual.is_zero
-```
 
-Verification reconstructs every built-in component from its defining parameters,
-checks supported certificate versions, formal degrees, and exact nonnegative
-weights, and compares the resulting coefficient mapping with the target. A failed
-identity returns a report with diagnostic issues; it is never treated as evidence
-that the target is negative.
-
-Certificates have deterministic, versioned JSON serialization:
-
-```python
 document = certificate.to_json()
 restored = DecompositionCertificate.from_json(document)
-
-assert verify_certificate(restored).valid
 assert restored.to_json() == document
+assert verify_certificate(restored).valid
 ```
 
-JSON stores rational numerators and denominators, exponent triples, ordered
-ordinary SymPy symbols and their assumptions, and primitive parameters. It does
-not store trusted expanded arrays or execute mathematical expression strings.
-Symbol subclasses such as `Dummy` remain supported for in-memory certificates but
-are deliberately rejected by the self-contained JSON format.
+Certificate JSON stores exact numbers, exponent triples, ordered symbols, and
+primitive parameters. It does not execute expression strings or trust cached
+expanded coefficient arrays.
 
-## Automatic backend
+### Coefficient-only exports
 
-`prove()` returns one of three structured outcomes: `PROVED` with a verified
-decomposition certificate, `DISPROVED` with an exact negative rational point, or
-`UNKNOWN` with diagnostics describing the finite work that was exhausted. Its input
-is the validated polynomial model, which keeps expression parsing and variable order
-explicit.
+The same polynomial can produce static SVG or HTML without a browser dependency:
 
 ```python
-from triangle_method import ProofStatus, prove
+from pathlib import Path
 
-result = prove(polynomial)
+from triangle_method import coefficient_triangle
 
-assert result.status is ProofStatus.PROVED
-assert result.method == "candidate_combination"
-assert result.certificate is not None
-assert result.verification is not None and result.verification.valid
-assert result.verification.residual is not None
-assert result.verification.residual.is_zero
+figure = coefficient_triangle(polynomial)
+assert figure.rows == ((1,), (-1, -1), (1, -1, 1))
+
+output = Path(".tmp/readme-example")
+output.mkdir(parents=True, exist_ok=True)
+figure.save_svg(output / "cauchy.svg", overwrite=True)
+figure.save_html(output / "cauchy.html", overwrite=True)
 ```
 
-The prover first recognizes zero, a positive monomial, one classic Schur component,
-one exact homogeneous square, or a polynomial with nonnegative coefficients. A direct
-match is preferred because it produces a smaller semantic certificate. Otherwise the
-backend generates monomial, weighted binomial-square, and translated or power-dilated
-Schur candidates and solves for nonnegative exact weights.
+The exported figure contains coefficients, including zeros, without cells, grid
+lines, an outline, or monomial labels. Export methods require an existing parent
+directory and preserve an existing file unless `overwrite=True` is supplied.
 
-The combination solver uses a deterministic rational Phase I simplex. Its coefficient
-matrix comes from the canonical coefficient triangle, and its result is accepted only
-when all weights are exact and nonnegative, the matrix residual is exactly zero, and
-the independent certificate verifier reconstructs the original target. Dependent
-columns and degenerate supports are handled directly. Solver time, pivot count, and
-candidate generation all have separate limits.
+### Search configuration
 
-SciPy/HiGHS is an optional support proposer. It is lazy-loaded and
-its floating output never serves as evidence. Install it with the `search` extra:
-
-```bash
-.venv/bin/python -m pip install -e '.[search]'
-```
-
-The exact backend is the default, so installing SciPy does not change the selected
-certificate. Choose `SolverBackend.AUTO` or `SolverBackend.SCIPY_HIGHS` to request a
-numerical support proposal followed by exact recovery. Search behavior is configured
-through one immutable options object:
+The automatic search is finite and configurable:
 
 ```python
 from triangle_method import (
@@ -233,11 +407,14 @@ from triangle_method import (
 )
 
 options = ProofSearchOptions(
-    candidate_limits=CandidateGenerationLimits(max_candidates=5_000),
+    candidate_limits=CandidateGenerationLimits(
+        max_candidates=5_000,
+        max_seconds=10,
+    ),
     combination_limits=CombinationSearchLimits(
         max_seconds=10,
         max_pivots=20_000,
-        backend=SolverBackend.EXACT,
+        backend=SolverBackend.AUTO,
     ),
     counterexample_limits=CounterexampleSearchLimits(
         max_denominator=16,
@@ -247,203 +424,112 @@ options = ProofSearchOptions(
 configured_result = prove(polynomial, options=options)
 ```
 
-When the component search does not find a proof, the backend checks reduced rational
-points on `x + y + z = 1`, including the boundary. Homogeneity justifies this
-normalization for positive-degree inputs; constants receive a separate exact check.
-For example:
+`AUTO` may use HiGHS as a support proposer. Every proposed support is solved
+again over exact rationals, so changing this option does not weaken the proof
+standard.
 
-```python
-false_target = HomogeneousPolynomial.from_expr(
-    x**2 + y**2 + z**2 - 4 * x * y,
-    variables=(x, y, z),
-)
-false_result = prove(false_target)
+## Technical summary
 
-assert false_result.status is ProofStatus.DISPROVED
-assert false_result.counterexample is not None
-assert false_result.counterexample.coordinates == (
-    sp.Rational(1, 2),
-    sp.Rational(1, 2),
-    0,
-)
-assert false_result.counterexample.value == sp.Rational(-1, 2)
+The application keeps coefficient entry, process isolation, proof search, and
+certificate verification as separate stages joined by exact, versioned data.
+
+### Data flow
+
+```mermaid
+flowchart LR
+    A[Coefficient fields] --> B[Exact client normalization]
+    B --> C[Versioned JSON request]
+    C --> D[Fastify validation and bounded queue]
+    D --> E[Python adapter]
+    E --> F[Direct recognizers]
+    F --> G[Finite component generation]
+    G --> H[Optional HiGHS support proposal]
+    H --> I[Exact rational Phase I solver]
+    I --> J[Independent certificate verifier]
+    J --> K[Validated JSON response]
+    K --> L[React proof, triangle, or witness]
 ```
 
-`UNKNOWN` means that the configured component cone and rational grid were
-inconclusive. Numerical infeasibility, exact infeasibility within the finite candidate
-library, generation interruption, and search limits cannot produce `DISPROVED`.
+### Proof algorithm
 
-Exact square recognition uses rational square-free decomposition followed by a
-complete exact re-square check. It has preflight limits of reduced degree 12, 128
-nonzero terms, and 4096 bits per rational numerator or denominator. Larger squares
-can still be supplied as manual certificates or found by a configured binomial-square
-candidate search.
+The backend follows these stages:
 
-## Finite component candidates
+1. It validates the triangular shape, parses canonical rational strings, and
+   constructs a homogeneous polynomial in the fixed order `(x, y, z)`.
+2. It extracts positive rational content and a common monomial without changing
+   signs. Direct recognizers check zero, one positive monomial, classic Schur,
+   one bounded exact homogeneous square, and all-nonnegative coefficients.
+3. If no direct certificate matches, it builds a deterministic finite library
+   of coefficient-one monomials, bounded weighted binomial squares, and
+   translated or power-dilated cubic and quintic Schur components.
+4. The web configuration uses `SolverBackend.AUTO`. HiGHS may propose likely
+   nonzero columns, after which a rational Phase I simplex recovers exact
+   nonnegative weights. If the proposal is unavailable or fails exact recovery,
+   the bounded exact fallback remains authoritative.
+5. If no proof is found, the backend evaluates exact reduced rational points on
+   `x + y + z = 1`. Homogeneity makes this simplex search sufficient for finding
+   normalized counterexamples to a positive-degree inequality.
+6. A proposed proof or counterexample crosses an independent verification
+   boundary before it becomes a result.
 
-`generate_candidates()` builds an inspectable finite library of nonnegative primitives
-at the target degree. Candidate generation uses only the degree and ordered variables;
-the target's coefficient signs and zero positions never prune the library.
+The Node gateway accepts at most two active Python proof workers by default and
+queues up to sixteen more requests. Each worker runs
+`.venv/bin/python -m triangle_method.web_adapter` without a shell, has a
+12-second wall-clock limit, and has bounded output. The gateway validates the
+Python response and confirms that its exact target equals the submitted target
+before returning it to the browser.
 
-```python
-from triangle_method import (
-    CandidateFamily,
-    CandidateGenerationLimits,
-    generate_candidates,
-)
+### Certificate trust boundary
 
-limits = CandidateGenerationLimits()
-library = generate_candidates(polynomial, limits=limits)
+A `PROVED` status requires all of the following:
 
-assert library.metadata.complete
-assert library.metadata.retained_count == 15
-assert limits.square_ratios == (
-    sp.Rational(1, 2),
-    sp.Integer(1),
-    sp.Integer(2),
-)
-assert (
-    sum(
-        candidate.family is CandidateFamily.BINOMIAL_SQUARE
-        for candidate in library.candidates
-    )
-    == 9
-)
-```
+- every weight is an exact nonnegative rational;
+- every component has the same ordered variables and formal degree as the
+  target;
+- the verifier reconstructs each monomial, square, or Schur component from its
+  theorem-relevant parameters;
+- the exactly weighted components reconstruct the original target; and
+- the exact residual polynomial is zero.
 
-Candidates appear in fixed family order: all coefficient-one monomials, bounded
-weighted binomial squares, then translated or power-dilated cubic and quintic Schur
-components. The default limits retain at most 10,000 unique columns, check a cooperative
-five-second budget, bound ratio numerators and denominators by two, and bound each
-unshifted square or Schur pattern at degree ten.
+The web adapter also re-verifies any presentation split used to show a common
+Cauchy portion and leftover squares. LaTeX is generated only after these checks;
+it is presentation, not evidence. Floating-point HiGHS output can choose a
+support to try, but it can never establish `PROVED` or `DISPROVED`.
 
-Each candidate retains its primitive object as exact mathematical provenance. Its full
-coefficient column includes positional zeros and is reduced to primitive integers by a
-positive scale only:
+A `DISPROVED` status similarly requires an exact rational point with
+nonnegative coordinates, exact sum one, and a freshly recomputed negative
+value. Search failure, numerical infeasibility, time limits, and finite-library
+infeasibility can produce only `UNKNOWN`.
 
-```text
-component expansion = expansion_scale * candidate column
-```
+## Tests and development checks
 
-`candidate.weighted_component(column_weight)` converts an exact nonnegative column
-weight back to the correct exact primitive weight. Positive proportional columns are
-deduplicated without changing signs. Completion metadata distinguishes a fully
-enumerated configured library from a candidate-count or time-limited prefix.
-`attempted_count`, `retained_count`, `duplicate_count`, and `zero_count` expose the
-work performed; `completed_families`, `interrupted_family`, and
-`GenerationStopReason` locate an interruption. The time limit is cooperative: one
-candidate expansion and full-column canonicalization can overrun it before the next
-check.
-
-`solve_candidate_combination()` fits a generated library directly when lower-level
-control is useful. `complete=True` on a candidate library still refers only to the
-configured finite family and never claims that the family contains every possible
-nonnegative polynomial.
-
-## Reversible normalization
-
-`factor_content` extracts a positive rational coefficient content and the
-largest common monomial while preserving all signs:
-
-```python
-from triangle_method import factor_content
-
-expression = sp.Rational(2, 3) * x**3 * y - sp.Rational(4, 9) * x**2 * y**2
-polynomial = HomogeneousPolynomial.from_expr(expression, variables=(x, y, z))
-normalization = factor_content(polynomial)
-
-assert normalization.scalar == sp.Rational(2, 9)
-assert normalization.monomial == (2, 1, 0)
-assert sp.expand(normalization.reduced.to_sympy() - (3 * x - 2 * y)) == 0
-assert normalization.restore() == polynomial
-```
-
-Normalization is explicit and reversible. Constructing a polynomial never
-divides away a coefficient or monomial factor.
-
-## Web application
-
-The repository includes a titleless React interface for entering and proving
-quadratic through quintic ternary homogeneous inequalities. Choose a degree,
-then enter an integer or exact fraction at each labeled position of the
-equilateral coefficient triangle. Blank entries mean zero. The inequality
-preview updates immediately and the submitted rows are sent to the Python
-backend without expression parsing or floating-point conversion.
-
-For a proved inequality, the interface displays the coefficient-only target
-triangle and an exact nonnegative decomposition. Cauchy, AM-GM, Schur, generic
-square, and nonnegative-monomial presentation groups receive stable colors and
-text labels. The component controls expose the exact contribution, accumulated
-sum, and remainder triangles at every certificate step. A disproved inequality
-shows its exact rational negative witness, while an inconclusive finite search
-is reported as `UNKNOWN`.
-
-Install the Python package and JavaScript dependencies, then start the local
-development servers:
+Run the Python suite and style checks from the repository root:
 
 ```bash
-python3 -m venv .venv
-.venv/bin/python -m pip install -e '.[dev,search]'
-
-cd web
-npm install
-npm run dev
-```
-
-Open `http://127.0.0.1:5173`. Vite serves the React client and proxies proof
-requests to the Node gateway on port 3000. The gateway validates the exact
-coefficient rows and runs `.venv/bin/python -m triangle_method.web_adapter` as a
-bounded child process with the shell disabled.
-
-Build and run the production application with:
-
-```bash
-cd web
-npm run build
-npm start
-```
-
-The production server is available at `http://127.0.0.1:3000` and serves both
-the compiled client and `/api/prove`.
-
-## Supported inputs
-
-- Homogeneous polynomials in exactly three explicitly ordered variables.
-- Integer and rational coefficients represented exactly.
-- Negative coefficients, negative constants, omitted variables, and sparse
-  coefficient dictionaries.
-- SymPy `Poly` inputs whose generator order differs from the requested variable
-  order.
-
-The current package rejects floating or non-finite coefficients, irrational or
-symbolic coefficients, undeclared variables, negative or fractional exponents,
-nonhomogeneous inputs, and expressions with variable denominators. Strings and
-expression parsing are not part of the current interface.
-
-## Development
-
-Keep the environment, caches, and temporary files inside the repository:
-
-```bash
-python3 -m venv .venv
-mkdir -p .tmp .pip-cache
-TMPDIR="$PWD/.tmp" .venv/bin/python -m pip install --cache-dir .pip-cache -e '.[dev,search]'
-
 .venv/bin/python -m pytest
 .venv/bin/ruff check .
 .venv/bin/ruff format --check .
+```
 
-cd web
-npm install
+Run the TypeScript checks and component/server tests from `web`:
+
+```bash
 npm run typecheck
 npm test
 npm run build
+```
+
+The browser suite builds the production application, starts it on an isolated
+local port, and uses an installed Google Chrome:
+
+```bash
 npm run test:e2e
 ```
 
-The browser tests use an installed Google Chrome and verify the equilateral
-input geometry, desktop and mobile layouts, named proof groups, exact final
-remainders, and counterexample rendering.
-
-The current implementation is verified with Python 3.13.7, SymPy 1.14.0,
-SciPy 1.18.1, pytest 9.1.1, and Ruff 0.16.6. SciPy is optional at runtime.
+The tests cover exact polynomial validation, coefficient ordering,
+normalization, primitive expansion, candidate generation, rational simplex,
+certificate serialization and independent verification, all three proof
+outcomes, degrees through 12 at the API boundary, worker cancellation and
+resource limits, React state behavior, responsive triangle geometry,
+high-degree navigation, semantic proof groups, exact step remainders, and
+production browser flows.

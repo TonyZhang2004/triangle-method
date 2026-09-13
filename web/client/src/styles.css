@@ -28,14 +28,27 @@
 }
 
 html {
+  width: 100%;
+  height: 100%;
   min-width: 320px;
+  overflow: hidden;
 }
 
 body {
+  width: 100%;
+  height: 100%;
   min-width: 320px;
-  min-height: 100vh;
+  min-height: 0;
   margin: 0;
+  overflow: hidden;
   background: #fafafa;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 
 button,
@@ -74,19 +87,32 @@ summary:focus-visible {
 }
 
 .app-shell {
-  width: min(100%, 66rem);
+  width: 100%;
+  height: min(var(--app-height, 100dvh), 100dvh);
+  min-height: 0;
   margin: 0 auto;
-  padding: clamp(1.25rem, 3vw, 3rem) clamp(1rem, 3vw, 2rem) 4rem;
+  padding: clamp(0.75rem, 1.6vw, 1.5rem) clamp(0.75rem, 2vw, 2.5rem) 0;
+  overflow: hidden;
+}
+
+.input-page-shell {
+  position: relative;
 }
 
 .proof-form {
   display: flex;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
   flex-direction: column;
   align-items: stretch;
+  overflow: hidden;
 }
 
 .degree-control {
   display: flex;
+  flex: none;
   align-items: center;
   gap: 0.75rem;
   margin-inline: auto;
@@ -103,24 +129,101 @@ summary:focus-visible {
 }
 
 .input-instruction {
-  margin: 1.25rem auto 0.25rem;
+  flex: none;
+  width: 100%;
+  max-width: 100%;
+  margin: 0.85rem auto 0.25rem;
+  overflow-x: auto;
+  overflow-y: hidden;
   color: var(--muted);
   text-align: center;
+  scrollbar-width: thin;
 }
 
 .coefficient-fieldset {
+  display: flex;
   min-width: 0;
+  min-height: 0;
   margin: 0;
   padding: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  overflow: hidden;
   border: 0;
+}
+
+.coefficient-editor-tools {
+  display: flex;
+  width: min(100%, 38rem);
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin: 0.8rem auto 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  flex: none;
+}
+
+.row-jump-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-weight: 600;
+}
+
+.row-jump-control select {
+  min-height: 2.35rem;
+  padding: 0.35rem 1.8rem 0.35rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+  color: inherit;
+  background: var(--surface);
+}
+
+.coefficient-entry-count {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.row-paste-help,
+.row-paste-status {
+  max-width: 38rem;
+  margin: 0.45rem auto 0;
+  color: var(--muted);
+  text-align: center;
+  font-size: 0.82rem;
+  flex: none;
+}
+
+.row-paste-status {
+  color: inherit;
 }
 
 .triangle-scroll,
 .formula-scroll {
+  width: 100%;
+  min-width: 0;
   max-width: 100%;
   overflow-x: auto;
   overscroll-behavior-inline: contain;
   scrollbar-width: thin;
+}
+
+.input-triangle-scroll {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable both-edges;
+  touch-action: pan-x pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+.output-triangle-scroll {
+  max-height: min(75dvh, 60rem);
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable both-edges;
 }
 
 .triangle-canvas {
@@ -153,7 +256,8 @@ summary:focus-visible {
 
 .coefficient-input {
   width: 6.25rem;
-  height: 2.65rem;
+  min-height: 2.75rem;
+  height: 2.75rem;
   padding: 0.45rem 0.55rem;
   border: 1px solid var(--line);
   border-radius: 0.55rem;
@@ -181,7 +285,7 @@ summary:focus-visible {
 .validation-summary,
 .service-error {
   width: min(100%, 40rem);
-  margin: 0.75rem auto;
+  margin: 0.5rem auto;
   padding: 0.8rem 1rem;
   border-left: 3px solid var(--danger);
   border-radius: 0.35rem;
@@ -189,10 +293,35 @@ summary:focus-visible {
 }
 
 .inequality-preview {
-  min-height: 4.5rem;
-  margin-top: 0.75rem;
-  padding: 0.6rem 0;
+  min-height: 3.5rem;
+  margin-top: 0;
+  padding: 0.4rem 0;
   text-align: center;
+}
+
+.proof-action-dock {
+  min-width: 0;
+  padding-bottom: calc(3.85rem + env(safe-area-inset-bottom));
+  flex: none;
+}
+
+.proof-button-bar {
+  position: absolute;
+  z-index: 20;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  min-height: calc(4rem + env(safe-area-inset-bottom));
+  align-items: flex-start;
+  justify-content: center;
+  padding: 0.45rem 1rem max(0.7rem, env(safe-area-inset-bottom));
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    color-mix(in srgb, var(--surface) 94%, transparent) 38%
+  );
 }
 
 .math-formula {
@@ -211,7 +340,6 @@ summary:focus-visible {
 }
 
 .prove-button {
-  align-self: center;
   min-width: 8rem;
   padding: 0.65rem 1.2rem;
   border: 1px solid #171717;
@@ -220,6 +348,36 @@ summary:focus-visible {
   background: #171717;
   font-weight: 650;
   cursor: pointer;
+  pointer-events: auto;
+  box-shadow: 0 0.35rem 1.2rem color-mix(in srgb, #000000 14%, transparent);
+}
+
+.input-page-shell.compact-height {
+  padding-top: 0.45rem;
+}
+
+.input-page-shell.compact-height .input-instruction,
+.input-page-shell.compact-height .row-paste-help,
+.input-page-shell.compact-height .row-paste-status,
+.input-page-shell.compact-height .inequality-preview {
+  display: none;
+}
+
+.input-page-shell.compact-height .coefficient-editor-tools {
+  width: 100%;
+  margin-top: 0.25rem;
+  flex-direction: row;
+  gap: 0.45rem;
+  font-size: 0.76rem;
+}
+
+.input-page-shell.compact-height .row-jump-control {
+  gap: 0.35rem;
+}
+
+.input-page-shell.compact-height .row-jump-control select {
+  min-height: 2rem;
+  padding-block: 0.2rem;
 }
 
 .prove-button:hover:not(:disabled) {
@@ -236,7 +394,7 @@ summary:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  margin-top: 2rem;
+  flex: none;
 }
 
 .service-error p {
@@ -257,6 +415,80 @@ summary:focus-visible {
   margin-top: 3rem;
   padding-top: 2rem;
   border-top: 1px solid var(--line);
+}
+
+.result-page-shell {
+  display: grid;
+  padding: 0;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.result-page-header {
+  z-index: 2;
+  padding: max(0.75rem, env(safe-area-inset-top))
+    clamp(0.75rem, 2vw, 2.5rem) 0.75rem;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+}
+
+.back-to-editor-button {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+  color: inherit;
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.result-page-scroll {
+  min-width: 0;
+  min-height: 0;
+  padding: clamp(1rem, 2vw, 2rem) clamp(0.75rem, 2vw, 2.5rem)
+    max(1.5rem, env(safe-area-inset-bottom));
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.result-page-shell .result-panel {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.proof-loading {
+  display: flex;
+  min-height: 100%;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 0.85rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+.proof-loading p {
+  margin: 0;
+}
+
+.proof-loading-mark {
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 2px solid var(--line);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: proof-loading-spin 0.8s linear infinite;
+}
+
+@keyframes proof-loading-spin {
+  to {
+    transform: rotate(1turn);
+  }
 }
 
 .result-status {
@@ -553,8 +785,25 @@ summary:focus-visible {
     padding-inline: 0.75rem;
   }
 
+  .result-page-shell {
+    padding-inline: 0;
+  }
+
+  .input-triangle-scroll {
+    scrollbar-gutter: auto;
+  }
+
   .input-instruction {
-    max-width: 18rem;
+    font-size: 0.9rem;
+  }
+
+  .coefficient-editor-tools {
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .row-paste-help {
+    max-width: 19rem;
   }
 
   .component-list {
@@ -574,6 +823,37 @@ summary:focus-visible {
   .service-error {
     align-items: stretch;
     flex-direction: column;
+  }
+}
+
+@media (max-width: 800px) {
+  .coefficient-input-slot {
+    width: 5.5rem;
+    gap: 0.3rem;
+  }
+
+  .coefficient-input {
+    width: 4.9rem;
+  }
+
+  .monomial-label {
+    font-size: 0.86rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .coefficient-input-slot {
+    width: 4.75rem;
+  }
+
+  .coefficient-input {
+    width: 4.25rem;
+    padding-inline: 0.35rem;
+    font-size: 0.95rem;
+  }
+
+  .monomial-label {
+    font-size: 0.8rem;
   }
 }
 

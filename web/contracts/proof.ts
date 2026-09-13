@@ -3,7 +3,11 @@
 export const PROOF_REQUEST_SCHEMA_NAME = "triangle_method.proof_request" as const;
 export const PROOF_RESPONSE_SCHEMA_NAME = "triangle_method.proof_response" as const;
 export const PROOF_SCHEMA_VERSION = 1 as const;
-export const SUPPORTED_DEGREES = [2, 3, 4, 5] as const;
+export const MINIMUM_SUPPORTED_DEGREE = 2 as const;
+export const MAXIMUM_SUPPORTED_DEGREE = 12 as const;
+export const SUPPORTED_DEGREES = [
+  2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+] as const;
 
 export type SupportedDegree = (typeof SUPPORTED_DEGREES)[number];
 export type ProofOutcome = "PROVED" | "DISPROVED" | "UNKNOWN";
@@ -102,15 +106,19 @@ export const proofRequestJsonSchema = {
   properties: {
     schema: { const: PROOF_REQUEST_SCHEMA_NAME },
     schemaVersion: { const: PROOF_SCHEMA_VERSION },
-    degree: { type: "integer", minimum: 2, maximum: 5 },
+    degree: {
+      type: "integer",
+      minimum: MINIMUM_SUPPORTED_DEGREE,
+      maximum: MAXIMUM_SUPPORTED_DEGREE,
+    },
     coefficientRows: {
       type: "array",
-      minItems: 3,
-      maxItems: 6,
+      minItems: MINIMUM_SUPPORTED_DEGREE + 1,
+      maxItems: MAXIMUM_SUPPORTED_DEGREE + 1,
       items: {
         type: "array",
         minItems: 1,
-        maxItems: 6,
+        maxItems: MAXIMUM_SUPPORTED_DEGREE + 1,
         items: {
           type: "string",
           pattern: REQUEST_RATIONAL_PATTERN,
@@ -185,7 +193,10 @@ function parseDegree(value: unknown, path: string): SupportedDegree {
     !Number.isInteger(value) ||
     !SUPPORTED_DEGREES.includes(value as SupportedDegree)
   ) {
-    fail(path, "must be an integer from 2 through 5");
+    fail(
+      path,
+      `must be an integer from ${MINIMUM_SUPPORTED_DEGREE} through ${MAXIMUM_SUPPORTED_DEGREE}`,
+    );
   }
   return value as SupportedDegree;
 }
