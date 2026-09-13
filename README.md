@@ -3,7 +3,8 @@
 Triangle Method is a Python package for working with exact coefficient triangles
 of ternary homogeneous polynomials. It provides the mathematical data model,
 coefficient-row conversion, reversible content normalization, and static SVG/HTML
-rendering. Proof search belongs to later batches.
+rendering. It also supports manually authored, exactly verified decomposition
+certificates. Automatic proof search belongs to later batches.
 
 ## Exact polynomial model
 
@@ -107,6 +108,72 @@ assert len(zero_triangle.rows) == 6
 Rendering uses only the Python standard library beyond the package's existing
 SymPy dependency. It does not require IPython, a browser package, or a numerical
 solver.
+
+## Manual exact certificates
+
+A certificate expresses one target as an exact nonnegative rational combination
+of built-in components. Batch 3 supports coefficient-one monomials, monomial
+multiples of homogeneous polynomial squares, and Schur components with
+equal-degree monomial substitutions. These primitives are nonnegative on the
+nonnegative orthant of the certificate's three ordered variables.
+
+For example, the quadratic coefficient triangle has the certificate
+
+\[
+x^2+y^2+z^2-xy-yz-zx
+=\tfrac12(x-y)^2+\tfrac12(y-z)^2+\tfrac12(z-x)^2.
+\]
+
+```python
+from triangle_method import (
+    DecompositionCertificate,
+    SquareComponent,
+    WeightedComponent,
+    verify_certificate,
+)
+
+linear_factors = (
+    HomogeneousPolynomial.from_expr(x - y, variables=(x, y, z)),
+    HomogeneousPolynomial.from_expr(y - z, variables=(x, y, z)),
+    HomogeneousPolynomial.from_expr(z - x, variables=(x, y, z)),
+)
+certificate = DecompositionCertificate(
+    target=polynomial,
+    terms=tuple(
+        WeightedComponent(
+            weight=sp.Rational(1, 2),
+            component=SquareComponent(factor=factor),
+        )
+        for factor in linear_factors
+    ),
+)
+
+report = verify_certificate(certificate)
+assert report.valid
+assert report.residual is not None and report.residual.is_zero
+```
+
+Verification reconstructs every built-in component from its defining parameters,
+checks supported certificate versions, formal degrees, and exact nonnegative
+weights, and compares the resulting coefficient mapping with the target. A failed
+identity returns a report with diagnostic issues; it is never treated as evidence
+that the target is negative.
+
+Certificates have deterministic, versioned JSON serialization:
+
+```python
+document = certificate.to_json()
+restored = DecompositionCertificate.from_json(document)
+
+assert verify_certificate(restored).valid
+assert restored.to_json() == document
+```
+
+JSON stores rational numerators and denominators, exponent triples, ordered
+ordinary SymPy symbols and their assumptions, and primitive parameters. It does
+not store trusted expanded arrays or execute mathematical expression strings.
+Symbol subclasses such as `Dummy` remain supported for in-memory certificates but
+are deliberately rejected by the self-contained JSON format.
 
 ## Reversible normalization
 
