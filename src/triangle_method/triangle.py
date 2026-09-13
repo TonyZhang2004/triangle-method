@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from typing import TypeAlias
 
 import sympy as sp
@@ -22,15 +22,24 @@ def _validate_degree(degree: object, *, context: str = "degree") -> int:
     return degree
 
 
-def triangle_exponents(degree: int) -> tuple[tuple[Exponent, ...], ...]:
-    """Return all degree-n exponent triples in the canonical triangular rows."""
+def _triangle_exponent_rows(degree: int) -> Iterator[tuple[Exponent, ...]]:
+    """Yield canonical degree-n exponent rows without materializing the full triangle."""
     validated_degree = _validate_degree(degree)
-    return tuple(
-        tuple(
+    for row in range(validated_degree + 1):
+        yield tuple(
             (validated_degree - row, row - column, column) for column in range(row + 1)
         )
-        for row in range(validated_degree + 1)
-    )
+
+
+def _triangle_index(exponent: Exponent) -> int:
+    """Return the flattened canonical triangle index of a validated exponent."""
+    row = exponent[1] + exponent[2]
+    return row * (row + 1) // 2 + exponent[2]
+
+
+def triangle_exponents(degree: int) -> tuple[tuple[Exponent, ...], ...]:
+    """Return all degree-n exponent triples in the canonical triangular rows."""
+    return tuple(_triangle_exponent_rows(degree))
 
 
 def coefficient_rows(
@@ -52,7 +61,7 @@ def coefficient_rows(
 
     return tuple(
         tuple(polynomial.coefficient(exponent) for exponent in exponent_row)
-        for exponent_row in triangle_exponents(degree)
+        for exponent_row in _triangle_exponent_rows(degree)
     )
 
 

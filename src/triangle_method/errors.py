@@ -11,3 +11,7 @@ class PrimitiveInputError(ValueError):
 
 class CertificateInputError(ValueError):
     """Report malformed decomposition certificate data or incompatible components."""
+
+
+class CandidateGenerationError(ValueError):
+    """Report malformed candidate-library data or generation limits."""
