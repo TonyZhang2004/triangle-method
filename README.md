@@ -361,6 +361,51 @@ assert normalization.restore() == polynomial
 Normalization is explicit and reversible. Constructing a polynomial never
 divides away a coefficient or monomial factor.
 
+## Web application
+
+The repository includes a titleless React interface for entering and proving
+quadratic through quintic ternary homogeneous inequalities. Choose a degree,
+then enter an integer or exact fraction at each labeled position of the
+equilateral coefficient triangle. Blank entries mean zero. The inequality
+preview updates immediately and the submitted rows are sent to the Python
+backend without expression parsing or floating-point conversion.
+
+For a proved inequality, the interface displays the coefficient-only target
+triangle and an exact nonnegative decomposition. Cauchy, AM-GM, Schur, generic
+square, and nonnegative-monomial presentation groups receive stable colors and
+text labels. The component controls expose the exact contribution, accumulated
+sum, and remainder triangles at every certificate step. A disproved inequality
+shows its exact rational negative witness, while an inconclusive finite search
+is reported as `UNKNOWN`.
+
+Install the Python package and JavaScript dependencies, then start the local
+development servers:
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -e '.[dev,search]'
+
+cd web
+npm install
+npm run dev
+```
+
+Open `http://127.0.0.1:5173`. Vite serves the React client and proxies proof
+requests to the Node gateway on port 3000. The gateway validates the exact
+coefficient rows and runs `.venv/bin/python -m triangle_method.web_adapter` as a
+bounded child process with the shell disabled.
+
+Build and run the production application with:
+
+```bash
+cd web
+npm run build
+npm start
+```
+
+The production server is available at `http://127.0.0.1:3000` and serves both
+the compiled client and `/api/prove`.
+
 ## Supported inputs
 
 - Homogeneous polynomials in exactly three explicitly ordered variables.
@@ -387,7 +432,18 @@ TMPDIR="$PWD/.tmp" .venv/bin/python -m pip install --cache-dir .pip-cache -e '.[
 .venv/bin/python -m pytest
 .venv/bin/ruff check .
 .venv/bin/ruff format --check .
+
+cd web
+npm install
+npm run typecheck
+npm test
+npm run build
+npm run test:e2e
 ```
+
+The browser tests use an installed Google Chrome and verify the equilateral
+input geometry, desktop and mobile layouts, named proof groups, exact final
+remainders, and counterexample rendering.
 
 The current implementation is verified with Python 3.13.7, SymPy 1.14.0,
 SciPy 1.18.1, pytest 9.1.1, and Ruff 0.16.6. SciPy is optional at runtime.
